@@ -48,6 +48,20 @@ let headBobPhase = 0;
 // Arms
 let armIdlePhase = 0;
 
+// Legs / locomotion
+let isWalking = false;
+let walkDirection: "left" | "right" | null = null;
+let walkCycle = 0;
+
+// Jump
+let isJumping = false;
+let jumpCycle = 0;
+
+// Wave
+let isWaving = false;
+let wavePhase = 0;
+let waveDuration = 0;
+
 // Gesture system
 interface ArmPose {
   lUpperArm: THREE.Euler;
@@ -60,36 +74,36 @@ interface ArmPose {
 
 const POSES: Record<string, ArmPose> = {
   rest: {
-    lUpperArm: new THREE.Euler( 0.05, 0,     0.18),
-    rUpperArm: new THREE.Euler( 0.05, 0,    -0.18),
-    lLowerArm: new THREE.Euler( 0.05, 0,     0.04),
-    rLowerArm: new THREE.Euler( 0.05, 0,    -0.04),
-    lShoulder:  new THREE.Euler( 0,    0,     0.04),
-    rShoulder:  new THREE.Euler( 0,    0,    -0.04),
+    lUpperArm: new THREE.Euler( 0.12, 0,     0.06),
+    rUpperArm: new THREE.Euler( 0.12, 0,    -0.06),
+    lLowerArm: new THREE.Euler( 0.18, 0,     0.02),
+    rLowerArm: new THREE.Euler( 0.18, 0,    -0.02),
+    lShoulder:  new THREE.Euler( 0,    0,     0.02),
+    rShoulder:  new THREE.Euler( 0,    0,    -0.02),
   },
   raiseLeft: {
-    lUpperArm: new THREE.Euler(-0.55, 0.1,   0.35),
-    rUpperArm: new THREE.Euler( 0.05, 0,    -0.18),
-    lLowerArm: new THREE.Euler( 0.3,  0,     0.05),
-    rLowerArm: new THREE.Euler( 0.05, 0,    -0.04),
-    lShoulder:  new THREE.Euler(-0.1,  0,     0.08),
-    rShoulder:  new THREE.Euler( 0,    0,    -0.04),
+    lUpperArm: new THREE.Euler(-0.45, 0.1,   0.22),
+    rUpperArm: new THREE.Euler( 0.12, 0,    -0.06),
+    lLowerArm: new THREE.Euler( 0.35, 0,     0.04),
+    rLowerArm: new THREE.Euler( 0.18, 0,    -0.02),
+    lShoulder:  new THREE.Euler(-0.08, 0,     0.06),
+    rShoulder:  new THREE.Euler( 0,    0,    -0.02),
   },
   raiseRight: {
-    lUpperArm: new THREE.Euler( 0.05, 0,     0.18),
-    rUpperArm: new THREE.Euler(-0.55,-0.1,  -0.35),
-    lLowerArm: new THREE.Euler( 0.05, 0,     0.04),
-    rLowerArm: new THREE.Euler( 0.3,  0,    -0.05),
-    lShoulder:  new THREE.Euler( 0,    0,     0.04),
-    rShoulder:  new THREE.Euler(-0.1,  0,    -0.08),
+    lUpperArm: new THREE.Euler( 0.12, 0,     0.06),
+    rUpperArm: new THREE.Euler(-0.45,-0.1,  -0.22),
+    lLowerArm: new THREE.Euler( 0.18, 0,     0.02),
+    rLowerArm: new THREE.Euler( 0.35, 0,    -0.04),
+    lShoulder:  new THREE.Euler( 0,    0,     0.02),
+    rShoulder:  new THREE.Euler(-0.08, 0,    -0.06),
   },
   bothUp: {
-    lUpperArm: new THREE.Euler(-0.35, 0.05,  0.28),
-    rUpperArm: new THREE.Euler(-0.35,-0.05, -0.28),
-    lLowerArm: new THREE.Euler( 0.25, 0,     0.05),
-    rLowerArm: new THREE.Euler( 0.25, 0,    -0.05),
-    lShoulder:  new THREE.Euler(-0.06, 0,     0.06),
-    rShoulder:  new THREE.Euler(-0.06, 0,    -0.06),
+    lUpperArm: new THREE.Euler(-0.28, 0.04,  0.18),
+    rUpperArm: new THREE.Euler(-0.28,-0.04, -0.18),
+    lLowerArm: new THREE.Euler( 0.28, 0,     0.04),
+    rLowerArm: new THREE.Euler( 0.28, 0,    -0.04),
+    lShoulder:  new THREE.Euler(-0.05, 0,     0.05),
+    rShoulder:  new THREE.Euler(-0.05, 0,    -0.05),
   },
   expressiveLeft: {
     lUpperArm: new THREE.Euler(-0.2,  0.2,   0.5),
@@ -159,9 +173,9 @@ export function initAvatar(canvas: HTMLCanvasElement): () => void {
 
   const scene = new THREE.Scene();
 
-  const camera = new THREE.PerspectiveCamera(26, canvas.clientWidth / canvas.clientHeight, 0.1, 20);
-  camera.position.set(0, 1.38, 2.0);
-  camera.lookAt(0, 1.22, 0);
+  const camera = new THREE.PerspectiveCamera(22, canvas.clientWidth / canvas.clientHeight, 0.1, 20);
+  camera.position.set(0, 0.9, 3.8);
+  camera.lookAt(0, 0.85, 0);
 
   // Lighting
   scene.add(new THREE.AmbientLight(0xffeeff, 0.55));
@@ -224,6 +238,9 @@ export function initAvatar(canvas: HTMLCanvasElement): () => void {
       updateBreathing(dt);
       updateIdleLook(dt);
       updateArms(dt);
+      updateLegs(dt);
+      if (isJumping) updateJump(dt);
+      if (isWaving) updateWave(dt);
       if (isTalking) { updateLipSync(dt); updateHeadBob(dt); }
       else { fadeOutLipSync(dt); }
       applyExpression(dt);
@@ -509,16 +526,143 @@ function updateArms(dt: number) {
   }
 }
 
+// ─── Legs ─────────────────────────────────────────────────────────────────────
+
+function setBone(name: string, x: number, y = 0, z = 0) {
+  const bone = vrm!.humanoid?.getRawBoneNode(name as any);
+  if (bone) { bone.rotation.x = x; bone.rotation.y = y; bone.rotation.z = z; }
+}
+
+function lerpBone(name: string, tx: number, ty: number, tz: number, t: number) {
+  const bone = vrm!.humanoid?.getRawBoneNode(name as any);
+  if (!bone) return;
+  bone.rotation.x = lerp(bone.rotation.x, tx, t);
+  bone.rotation.y = lerp(bone.rotation.y, ty, t);
+  bone.rotation.z = lerp(bone.rotation.z, tz, t);
+}
+
+function updateLegs(dt: number) {
+  if (!vrm?.humanoid) return;
+
+  if (isWalking) {
+    walkCycle += dt * 3.8;
+    const L = Math.sin(walkCycle);
+    const R = Math.sin(walkCycle + Math.PI);
+
+    // Upper legs swing
+    setBone("leftUpperLeg",  L * 0.38);
+    setBone("rightUpperLeg", R * 0.38);
+
+    // Lower legs bend on backswing
+    setBone("leftLowerLeg",  Math.max(0, -L) * 0.55);
+    setBone("rightLowerLeg", Math.max(0, -R) * 0.55);
+
+    // Feet angle with step
+    setBone("leftFoot",  -L * 0.18);
+    setBone("rightFoot", -R * 0.18);
+
+    // Hip sway side to side
+    const hipBone = vrm.humanoid.getRawBoneNode("hips");
+    if (hipBone) hipBone.rotation.z = Math.sin(walkCycle * 0.5) * 0.04;
+
+    // Face direction
+    if (vrm.scene) {
+      const targetY = walkDirection === "left" ? Math.PI * 0.15 : -Math.PI * 0.15;
+      vrm.scene.rotation.y = lerp(vrm.scene.rotation.y, targetY, dt * 6);
+    }
+  } else {
+    // Return legs to neutral
+    const t = dt * 4;
+    lerpBone("leftUpperLeg",  0, 0, 0, t);
+    lerpBone("rightUpperLeg", 0, 0, 0, t);
+    lerpBone("leftLowerLeg",  0, 0, 0, t);
+    lerpBone("rightLowerLeg", 0, 0, 0, t);
+    lerpBone("leftFoot",      0, 0, 0, t);
+    lerpBone("rightFoot",     0, 0, 0, t);
+
+    if (vrm.scene) {
+      vrm.scene.rotation.y = lerp(vrm.scene.rotation.y, 0, dt * 4);
+    }
+  }
+}
+
+// ─── Jump ─────────────────────────────────────────────────────────────────────
+
+function updateJump(dt: number) {
+  if (!vrm?.humanoid) return;
+
+  jumpCycle += dt * 2.4;
+  const t = clamp(jumpCycle / Math.PI, 0, 1);
+  const arc = Math.sin(jumpCycle);
+
+  // Anticipation squat → launch → land
+  const bend = arc > 0 ? -arc * 0.3 : arc * 0.2;
+
+  setBone("leftUpperLeg",  bend * 0.8);
+  setBone("rightUpperLeg", bend * 0.8);
+  setBone("leftLowerLeg",  Math.max(0, -bend) * 1.2);
+  setBone("rightLowerLeg", Math.max(0, -bend) * 1.2);
+
+  // Arms rise at peak
+  const armLift = Math.max(0, arc) * 0.5;
+  const lArm = vrm.humanoid.getRawBoneNode("leftUpperArm");
+  const rArm = vrm.humanoid.getRawBoneNode("rightUpperArm");
+  if (lArm) lArm.rotation.z = lerp(lArm.rotation.z, 0.06 + armLift, dt * 10);
+  if (rArm) rArm.rotation.z = lerp(rArm.rotation.z, -0.06 - armLift, dt * 10);
+
+  void t;
+}
+
+// ─── Wave ─────────────────────────────────────────────────────────────────────
+
+function updateWave(dt: number) {
+  if (!vrm?.humanoid) return;
+
+  wavePhase += dt * 6;
+  waveDuration += dt;
+
+  // Right arm waves
+  const wave = Math.sin(wavePhase) * 0.4;
+  const rUpper = vrm.humanoid.getRawBoneNode("rightUpperArm");
+  const rLower = vrm.humanoid.getRawBoneNode("rightLowerArm");
+  if (rUpper) {
+    rUpper.rotation.x = lerp(rUpper.rotation.x, -0.9, dt * 6);
+    rUpper.rotation.z = lerp(rUpper.rotation.z, -0.3 + wave, dt * 6);
+  }
+  if (rLower) {
+    rLower.rotation.x = lerp(rLower.rotation.x, 0.6, dt * 6);
+  }
+
+  // Head tilt toward wave side
+  const headBone = vrm.humanoid.getRawBoneNode("head");
+  if (headBone) headBone.rotation.z = lerp(headBone.rotation.z, -0.12, dt * 4);
+}
+
 // ─── Public API ──────────────────────────────────────────────────────────────
 
 export function setTalking(state: boolean) {
   isTalking = state;
-
   if (!state) {
     talkPhase = 0;
     visemeTimer = 0;
     currentVisemeWeight = 0;
   }
+}
+
+export function setWalking(dir: "left" | "right" | null) {
+  walkDirection = dir;
+  isWalking = dir !== null;
+  if (!isWalking) walkCycle = 0;
+}
+
+export function setJumping(state: boolean) {
+  isJumping = state;
+  if (state) jumpCycle = 0;
+}
+
+export function setWaving(state: boolean) {
+  isWaving = state;
+  if (state) { wavePhase = 0; waveDuration = 0; }
 }
 
 export function setExpression(

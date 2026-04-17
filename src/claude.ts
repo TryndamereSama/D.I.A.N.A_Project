@@ -1,3 +1,4 @@
+/// <reference types="vite/client" />
 const API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY as string;
 const API_URL = "https://api.anthropic.com/v1/messages";
 
