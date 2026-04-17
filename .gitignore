@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-ssr/
+
+# Tauri build artifacts
+src-tauri/target/
+src-tauri/gen/
+
+# Environment (contains API keys)
+.env
+.env.local
+
+# VRM model (large binary + potential license restrictions)
+public/models/*.vrm
+
+# Machine-specific Cargo target redirect
+src-tauri/.cargo/config.toml
+
+# Generated icon source
+diana-icon.png
+
+# Misc
+*.log
+.DS_Store
+Thumbs.db
