@@ -1,5 +1,19 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+#[tauri::command]
+fn get_cursor_pos() -> (i32, i32) {
+    #[cfg(target_os = "windows")]
+    {
+        use windows_sys::Win32::Foundation::POINT;
+        use windows_sys::Win32::UI::WindowsAndMessaging::GetCursorPos;
+        let mut pt = POINT { x: 0, y: 0 };
+        unsafe { GetCursorPos(&mut pt); }
+        return (pt.x, pt.y);
+    }
+    #[cfg(not(target_os = "windows"))]
+    (0, 0)
+}
+
 use tauri::{
     menu::{Menu, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
@@ -73,6 +87,7 @@ fn main() {
 
             Ok(())
         })
+        .invoke_handler(tauri::generate_handler![get_cursor_pos])
         .run(tauri::generate_context!())
         .expect("error while running D.I.A.N.A");
 }

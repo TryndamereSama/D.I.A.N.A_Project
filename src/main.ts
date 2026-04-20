@@ -34,6 +34,33 @@ async function fitToMonitor() {
 
 fitToMonitor();
 
+// Click-through: poll OS cursor position every 50ms via Rust command.
+// setIgnoreCursorEvents(true) stops JS mouse events — can't use mousemove alone.
+async function initClickThrough() {
+  try {
+    const { getCurrentWindow } = await import("@tauri-apps/api/window");
+    const { invoke } = await import("@tauri-apps/api/core");
+    const win = getCurrentWindow();
+    const chatUI = document.getElementById("chat-ui")!;
+
+    setInterval(async () => {
+      const [cx, cy] = await invoke<[number, number]>("get_cursor_pos");
+      const pos  = await win.outerPosition();
+      const sf   = window.devicePixelRatio || 1;
+      // Convert physical screen coords → logical window-local coords
+      const lx = (cx - pos.x) / sf;
+      const ly = (cy - pos.y) / sf;
+      const r  = chatUI.getBoundingClientRect();
+      const overChat = lx >= r.left && lx <= r.right && ly >= r.top && ly <= r.bottom;
+      win.setIgnoreCursorEvents(!overChat);
+    }, 50);
+  } catch {
+    // browser dev mode — skip
+  }
+}
+
+initClickThrough();
+
 // Init 3D avatar (owns the render loop)
 initAvatar(canvas);
 
