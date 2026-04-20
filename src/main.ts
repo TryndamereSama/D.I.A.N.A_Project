@@ -10,6 +10,12 @@ const chatBubble    = document.getElementById("chat-bubble") as HTMLDivElement;
 const chatText      = document.getElementById("chat-text") as HTMLDivElement;
 const historyPanel  = document.getElementById("history-panel") as HTMLDivElement;
 const historyBtn    = document.getElementById("history-btn") as HTMLButtonElement;
+const settingsBtn   = document.getElementById("settings-btn") as HTMLButtonElement;
+const setupOverlay  = document.getElementById("setup-overlay") as HTMLDivElement;
+const setupInput    = document.getElementById("setup-input") as HTMLInputElement;
+const setupSave     = document.getElementById("setup-save") as HTMLButtonElement;
+const setupError    = document.getElementById("setup-error") as HTMLDivElement;
+const setupLink     = document.getElementById("setup-link") as HTMLSpanElement;
 
 // Place compact widget at bottom-right corner
 const WIDGET_W = 380; // logical px
@@ -35,6 +41,45 @@ async function fitToMonitor() {
 }
 
 fitToMonitor();
+
+// ── Setup / API Key ───────────────────────────────────────────────────────────
+
+function showSetup() {
+  setupOverlay.classList.remove("hidden");
+  setupInput.value = localStorage.getItem("diana_api_key") || "";
+  setupInput.focus();
+}
+
+function hideSetup() {
+  setupOverlay.classList.add("hidden");
+}
+
+function saveKey() {
+  const key = setupInput.value.trim();
+  if (!key.startsWith("sk-ant-")) {
+    setupError.classList.remove("hidden");
+    return;
+  }
+  setupError.classList.add("hidden");
+  localStorage.setItem("diana_api_key", key);
+  hideSetup();
+}
+
+// First run: show setup if no key stored
+if (!localStorage.getItem("diana_api_key")) showSetup();
+else hideSetup();
+
+setupSave.addEventListener("click", saveKey);
+setupInput.addEventListener("keydown", (e) => { if (e.key === "Enter") saveKey(); });
+settingsBtn.addEventListener("click", showSetup);
+setupLink.addEventListener("click", async () => {
+  try {
+    const { open } = await import("@tauri-apps/plugin-shell");
+    open("https://console.anthropic.com/settings/keys");
+  } catch {
+    window.open("https://console.anthropic.com/settings/keys", "_blank");
+  }
+});
 
 // Click-through: poll OS cursor position every 50ms via Rust command.
 // setIgnoreCursorEvents(true) stops JS mouse events — can't use mousemove alone.

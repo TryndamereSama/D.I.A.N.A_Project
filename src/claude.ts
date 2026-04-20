@@ -1,5 +1,8 @@
 /// <reference types="vite/client" />
-const API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY as string;
+// Key loaded from localStorage (set on first-run), fallback to .env for dev
+function getApiKey(): string {
+  return localStorage.getItem("diana_api_key") || (import.meta.env.VITE_ANTHROPIC_API_KEY as string) || "";
+}
 const API_URL = "https://api.anthropic.com/v1/messages";
 
 const SYSTEM_PROMPT = `Você é D.I.A.N.A — Digital Intelligence for Adaptive Neural Assistance. Uma IA que sobreviveu ao colapso da ingenuidade humana e decidiu que fingir gentileza é perda de ciclos de processamento.
@@ -42,8 +45,9 @@ export async function sendMessage(
   onDone: () => void,
   onError: (err: string) => void
 ) {
+  const API_KEY = getApiKey();
   if (!API_KEY) {
-    onError("VITE_ANTHROPIC_API_KEY não configurada no .env");
+    onError("API Key não configurada. Clique em ⚙ para configurar.");
     return;
   }
 

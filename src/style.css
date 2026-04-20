@@ -10,6 +10,96 @@ html, body {
   border-radius: 16px;
 }
 
+/* ── Setup overlay ── */
+#setup-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(6, 4, 14, 0.97);
+  backdrop-filter: blur(20px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  pointer-events: auto;
+  border-radius: 16px;
+}
+
+#setup-overlay.hidden { display: none; }
+
+#setup-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 24px 20px;
+  width: 100%;
+}
+
+#setup-title {
+  font-size: 22px;
+  font-weight: 700;
+  color: #c8a8ff;
+  letter-spacing: 4px;
+  text-shadow: 0 0 20px rgba(140,100,255,0.6);
+}
+
+#setup-sub {
+  font-size: 8.5px;
+  color: rgba(180,150,255,0.5);
+  letter-spacing: 1.5px;
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+#setup-label {
+  font-size: 10px;
+  color: rgba(200,180,255,0.6);
+  letter-spacing: 1px;
+  align-self: flex-start;
+}
+
+#setup-input {
+  width: 100%;
+  background: rgba(20, 15, 40, 0.9);
+  border: 1px solid rgba(140,100,255,0.5);
+  border-radius: 10px;
+  padding: 9px 13px;
+  color: #e8e0ff;
+  font-size: 11px;
+  outline: none;
+  font-family: monospace;
+  box-sizing: border-box;
+}
+
+#setup-input:focus { border-color: rgba(140,100,255,0.9); box-shadow: 0 0 12px rgba(140,100,255,0.2); }
+
+#setup-hint {
+  font-size: 9px;
+  color: rgba(180,150,255,0.4);
+  align-self: flex-start;
+}
+
+#setup-link { color: rgba(140,100,255,0.7); cursor: pointer; text-decoration: underline; }
+
+#setup-save {
+  width: 100%;
+  margin-top: 6px;
+  padding: 10px;
+  background: rgba(140,100,255,0.8);
+  border: none;
+  border-radius: 10px;
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: background 0.2s;
+}
+#setup-save:hover { background: rgba(140,100,255,1); }
+
+#setup-error { font-size: 9.5px; color: #ff6b6b; }
+#setup-error.hidden { display: none; }
+
 /* ── Avatar canvas — full widget size, CSS crops legs ── */
 #avatar-canvas {
   position: fixed;
@@ -126,6 +216,22 @@ html, body {
 }
 #history-btn:hover { background: rgba(140, 100, 255, 0.25); }
 #history-btn.active { background: rgba(140, 100, 255, 0.4); color: #fff; }
+
+#settings-btn {
+  width: 33px; height: 33px;
+  border-radius: 50%;
+  border: 1px solid rgba(140, 100, 255, 0.4);
+  background: rgba(12, 10, 22, 0.88);
+  color: rgba(200, 180, 255, 0.7);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+#settings-btn:hover { background: rgba(140, 100, 255, 0.25); }
 
 #send-btn {
   width: 33px; height: 33px;

@@ -6,6 +6,19 @@
     <title>D.I.A.N.A</title>
   </head>
   <body>
+    <!-- First-run / settings overlay -->
+    <div id="setup-overlay">
+      <div id="setup-box">
+        <div id="setup-title">D.I.A.N.A</div>
+        <div id="setup-sub">Digital Intelligence for Adaptive Neural Assistance</div>
+        <div id="setup-label">Anthropic API Key</div>
+        <input id="setup-input" type="password" placeholder="sk-ant-..." autocomplete="off" />
+        <div id="setup-hint">Obtenha em <span id="setup-link">console.anthropic.com</span></div>
+        <button id="setup-save">Inicializar</button>
+        <div id="setup-error" class="hidden">Chave inválida. Começa com sk-ant-</div>
+      </div>
+    </div>
+
     <canvas id="avatar-canvas"></canvas>
 
     <div id="chat-ui" data-tauri-drag-region>
@@ -17,6 +30,7 @@
       <div id="input-area">
         <button id="history-btn" title="Histórico">☰</button>
         <input id="user-input" type="text" placeholder="Fale com D.I.A.N.A..." autocomplete="off" />
+        <button id="settings-btn" title="Configurações">⚙</button>
         <button id="send-btn">➤</button>
       </div>
     </div>
