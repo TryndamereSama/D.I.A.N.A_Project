@@ -1,13 +1,15 @@
 import "./style.css";
 import { initAvatar, setTalking, setExpression } from "./avatar";
-import { sendMessage } from "./claude";
+import { sendMessage, getHistory } from "./claude";
 import { initMovement, updateMovement } from "./movement";
 
 const canvas     = document.getElementById("avatar-canvas") as HTMLCanvasElement;
 const inputEl    = document.getElementById("user-input") as HTMLInputElement;
 const sendBtn    = document.getElementById("send-btn") as HTMLButtonElement;
-const chatBubble = document.getElementById("chat-bubble") as HTMLDivElement;
-const chatText   = document.getElementById("chat-text") as HTMLDivElement;
+const chatBubble    = document.getElementById("chat-bubble") as HTMLDivElement;
+const chatText      = document.getElementById("chat-text") as HTMLDivElement;
+const historyPanel  = document.getElementById("history-panel") as HTMLDivElement;
+const historyBtn    = document.getElementById("history-btn") as HTMLButtonElement;
 
 // Place compact widget at bottom-right corner
 const WIDGET_W = 380; // logical px
@@ -116,6 +118,7 @@ async function handleSend() {
       setTalking(false);
       setExpression("happy");
       setInputBusy(false);
+      if (!historyPanel.classList.contains("hidden")) renderHistory();
       setTimeout(() => { hideBubble(); setExpression("neutral"); }, 8000);
     },
     (err) => {
@@ -127,6 +130,27 @@ async function handleSend() {
   );
 }
 
+function renderHistory() {
+  historyPanel.innerHTML = "";
+  const hist = getHistory();
+  if (hist.length === 0) {
+    historyPanel.innerHTML = '<span style="color:rgba(200,180,255,0.4);font-size:10px">Nenhuma conversa ainda.</span>';
+    return;
+  }
+  for (const msg of hist) {
+    const div = document.createElement("div");
+    div.className = `history-msg ${msg.role}`;
+    div.innerHTML = `<span class="history-label">${msg.role === "user" ? "Você" : "D.I.A.N.A"}</span><span class="history-text">${msg.content}</span>`;
+    historyPanel.appendChild(div);
+  }
+  historyPanel.scrollTop = historyPanel.scrollHeight;
+}
+
+historyBtn.addEventListener("click", () => {
+  const open = historyPanel.classList.toggle("hidden") === false;
+  historyBtn.classList.toggle("active", open);
+  if (open) renderHistory();
+});
 sendBtn.addEventListener("click", handleSend);
 inputEl.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }

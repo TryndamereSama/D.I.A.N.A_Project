@@ -150,7 +150,7 @@ function copyPose(p: ArmPose): ArmPose {
   };
 }
 
-function randomGestureInterval() { return 1.8 + Math.random() * 2.5; }
+function randomGestureInterval() { return 1.0 + Math.random() * 1.5; }
 
 // ─── World constants ──────────────────────────────────────────────────────────
 
@@ -305,7 +305,7 @@ export function initAvatar(canvas: HTMLCanvasElement): () => void {
 
 function updateIdleSway(dt: number) {
   if (!vrm?.humanoid) return;
-  idleSwayPhase += dt * 0.35;
+  idleSwayPhase += dt * 0.65;
 
   const sideS  = Math.sin(idleSwayPhase) * 0.022;
   const fwdS   = Math.sin(idleSwayPhase * 0.6) * 0.012;
@@ -329,7 +329,7 @@ function updateIdleExpression(dt: number) {
   idleExprTimer += dt;
   if (idleExprTimer >= nextIdleExprAt) {
     idleExprTimer = 0;
-    nextIdleExprAt = 12 + Math.random() * 18;
+    nextIdleExprAt = 7 + Math.random() * 10;
     const expr = IDLE_EXPR_POOL[Math.floor(Math.random() * IDLE_EXPR_POOL.length)];
     setExpression(expr);
   }
@@ -444,7 +444,7 @@ function updateBlink(dt: number) {
 function updateBreathing(dt: number) {
   if (!vrm?.humanoid) return;
 
-  breathPhase += dt * (isTalking ? 1.1 : 0.75);
+  breathPhase += dt * (isTalking ? 1.5 : 1.0);
   const breath = Math.sin(breathPhase);
   const breathSlow = Math.sin(breathPhase * 0.5);
 
@@ -478,7 +478,7 @@ function updateIdleLook(dt: number) {
       (Math.random() - 0.5) * 0.9,  // wider horizontal
       (Math.random() - 0.5) * 0.5   // wider vertical
     );
-    targetHeadTiltZ = (Math.random() - 0.5) * 0.18; // random head tilt
+    targetHeadTiltZ = (Math.random() - 0.5) * 0.28;
   }
 
   targetHeadEuler.y += idleLookTarget.x * 0.22;
@@ -528,7 +528,7 @@ function fadeOutLipSync(dt: number) {
 
 function updateHeadBob(dt: number) {
   if (!vrm?.humanoid) return;
-  headBobPhase += dt * 3.5;
+  headBobPhase += dt * 5.5;
 
   const headBone = vrm.humanoid.getRawBoneNode("head");
   if (headBone) {
@@ -556,7 +556,7 @@ function applyExpression(dt: number) {
   if (!targetExpression) return;
 
   // Soft blend in — slow lerp, capped at 0.7 for natural look (not "face stuck on max")
-  currentExpressionWeight = lerp(currentExpressionWeight, 0.7, dt * 1.5);
+  currentExpressionWeight = lerp(currentExpressionWeight, 0.7, dt * 3.0);
   vrm.expressionManager.setValue(targetExpression, currentExpressionWeight);
 }
 
@@ -619,7 +619,7 @@ function updateArms(dt: number) {
     targetPose.lUpperArm.z += sway;
     targetPose.rUpperArm.z -= sway;
 
-    applyPoseToSkeleton(3.5, dt);
+    applyPoseToSkeleton(5.0, dt);
   } else {
     const basePose = copyPose(POSES.rest);
     const sway = Math.sin(armIdlePhase) * 0.012;
@@ -627,7 +627,7 @@ function updateArms(dt: number) {
     basePose.rUpperArm.z -= sway;
 
     targetPose = basePose;
-    applyPoseToSkeleton(2.5, dt);
+    applyPoseToSkeleton(3.5, dt);
   }
 }
 
