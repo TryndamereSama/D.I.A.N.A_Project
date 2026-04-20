@@ -10,6 +10,8 @@ let vrm: VRM | null = null;
 let isTalking = false;
 let targetExpression: VRMExpressionPresetName | null = null;
 let currentExpressionWeight = 0;
+let prevExpression: VRMExpressionPresetName | null = null;
+let prevExpressionWeight = 0;
 
 // Mouse tracking
 const mouse = new THREE.Vector2(0, 0);
@@ -33,6 +35,16 @@ let breathPhase = 0;
 let idleLookTimer = 0;
 let nextIdleLookAt = randomIdleLook();
 let idleLookTarget = new THREE.Vector2(0, 0);
+let targetHeadTiltZ = 0; // random head tilt Z added on idle look change
+
+// Idle body sway
+let idleSwayPhase = 0;
+
+// Idle expression cycling
+let idleExprTimer = 0;
+let nextIdleExprAt = 12 + Math.random() * 15;
+const IDLE_EXPR_POOL: Array<"happy" | "neutral" | "surprised"> =
+  ["neutral", "neutral", "neutral", "happy", "happy", "surprised"];
 
 // Talking
 let talkPhase = 0;
@@ -48,20 +60,6 @@ let headBobPhase = 0;
 // Arms
 let armIdlePhase = 0;
 
-// Legs / locomotion
-let isWalking = false;
-let walkDirection: "left" | "right" | null = null;
-let walkCycle = 0;
-
-// Jump
-let isJumping = false;
-let jumpCycle = 0;
-
-// Wave
-let isWaving = false;
-let wavePhase = 0;
-let waveDuration = 0;
-
 // Gesture system
 interface ArmPose {
   lUpperArm: THREE.Euler;
@@ -72,60 +70,61 @@ interface ArmPose {
   rShoulder:  THREE.Euler;
 }
 
+// VRM1 arm Z convention: lUpperArm.z negative = arm down; rUpperArm.z positive = arm down
 const POSES: Record<string, ArmPose> = {
   rest: {
-    lUpperArm: new THREE.Euler( 0.12, 0,     0.06),
-    rUpperArm: new THREE.Euler( 0.12, 0,    -0.06),
-    lLowerArm: new THREE.Euler( 0.18, 0,     0.02),
-    rLowerArm: new THREE.Euler( 0.18, 0,    -0.02),
-    lShoulder:  new THREE.Euler( 0,    0,     0.02),
-    rShoulder:  new THREE.Euler( 0,    0,    -0.02),
+    lUpperArm: new THREE.Euler( 0.1,  0,    -1.1),
+    rUpperArm: new THREE.Euler( 0.1,  0,     1.1),
+    lLowerArm: new THREE.Euler( 0.35, 0,     0),
+    rLowerArm: new THREE.Euler( 0.35, 0,     0),
+    lShoulder:  new THREE.Euler( 0,    0,     0.05),
+    rShoulder:  new THREE.Euler( 0,    0,    -0.05),
   },
   raiseLeft: {
-    lUpperArm: new THREE.Euler(-0.45, 0.1,   0.22),
-    rUpperArm: new THREE.Euler( 0.12, 0,    -0.06),
-    lLowerArm: new THREE.Euler( 0.35, 0,     0.04),
-    rLowerArm: new THREE.Euler( 0.18, 0,    -0.02),
-    lShoulder:  new THREE.Euler(-0.08, 0,     0.06),
-    rShoulder:  new THREE.Euler( 0,    0,    -0.02),
+    lUpperArm: new THREE.Euler(-0.5,  0.1,  -0.4),
+    rUpperArm: new THREE.Euler( 0.1,  0,     1.1),
+    lLowerArm: new THREE.Euler( 0.5,  0,     0),
+    rLowerArm: new THREE.Euler( 0.35, 0,     0),
+    lShoulder:  new THREE.Euler(-0.1,  0,     0.1),
+    rShoulder:  new THREE.Euler( 0,    0,    -0.05),
   },
   raiseRight: {
-    lUpperArm: new THREE.Euler( 0.12, 0,     0.06),
-    rUpperArm: new THREE.Euler(-0.45,-0.1,  -0.22),
-    lLowerArm: new THREE.Euler( 0.18, 0,     0.02),
-    rLowerArm: new THREE.Euler( 0.35, 0,    -0.04),
-    lShoulder:  new THREE.Euler( 0,    0,     0.02),
-    rShoulder:  new THREE.Euler(-0.08, 0,    -0.06),
+    lUpperArm: new THREE.Euler( 0.1,  0,    -1.1),
+    rUpperArm: new THREE.Euler(-0.5, -0.1,   0.4),
+    lLowerArm: new THREE.Euler( 0.35, 0,     0),
+    rLowerArm: new THREE.Euler( 0.5,  0,     0),
+    lShoulder:  new THREE.Euler( 0,    0,     0.05),
+    rShoulder:  new THREE.Euler(-0.1,  0,    -0.1),
   },
   bothUp: {
-    lUpperArm: new THREE.Euler(-0.28, 0.04,  0.18),
-    rUpperArm: new THREE.Euler(-0.28,-0.04, -0.18),
-    lLowerArm: new THREE.Euler( 0.28, 0,     0.04),
-    rLowerArm: new THREE.Euler( 0.28, 0,    -0.04),
-    lShoulder:  new THREE.Euler(-0.05, 0,     0.05),
-    rShoulder:  new THREE.Euler(-0.05, 0,    -0.05),
+    lUpperArm: new THREE.Euler(-0.4,  0.04, -0.5),
+    rUpperArm: new THREE.Euler(-0.4, -0.04,  0.5),
+    lLowerArm: new THREE.Euler( 0.45, 0,     0),
+    rLowerArm: new THREE.Euler( 0.45, 0,     0),
+    lShoulder:  new THREE.Euler(-0.08, 0,     0.08),
+    rShoulder:  new THREE.Euler(-0.08, 0,    -0.08),
   },
   expressiveLeft: {
-    lUpperArm: new THREE.Euler(-0.2,  0.2,   0.5),
-    rUpperArm: new THREE.Euler( 0.05, 0,    -0.18),
-    lLowerArm: new THREE.Euler( 0.6,  0.1,   0.1),
-    rLowerArm: new THREE.Euler( 0.05, 0,    -0.04),
-    lShoulder:  new THREE.Euler(-0.05, 0,     0.1),
-    rShoulder:  new THREE.Euler( 0,    0,    -0.04),
+    lUpperArm: new THREE.Euler(-0.3,  0.2,  -0.6),
+    rUpperArm: new THREE.Euler( 0.05, 0,     1.05),
+    lLowerArm: new THREE.Euler( 0.6,  0.1,   0),
+    rLowerArm: new THREE.Euler( 0.1,  0,     0),
+    lShoulder:  new THREE.Euler(-0.08, 0,     0.1),
+    rShoulder:  new THREE.Euler( 0,    0,    -0.05),
   },
   happy: {
-    lUpperArm: new THREE.Euler(-0.45, 0.1,   0.45),
-    rUpperArm: new THREE.Euler(-0.45,-0.1,  -0.45),
-    lLowerArm: new THREE.Euler( 0.4,  0,     0.08),
-    rLowerArm: new THREE.Euler( 0.4,  0,    -0.08),
+    lUpperArm: new THREE.Euler(-0.5,  0.1,  -0.55),
+    rUpperArm: new THREE.Euler(-0.5, -0.1,   0.55),
+    lLowerArm: new THREE.Euler( 0.5,  0,     0),
+    rLowerArm: new THREE.Euler( 0.5,  0,     0),
     lShoulder:  new THREE.Euler(-0.1,  0,     0.1),
     rShoulder:  new THREE.Euler(-0.1,  0,    -0.1),
   },
   sad: {
-    lUpperArm: new THREE.Euler( 0.2,  0,     0.08),
-    rUpperArm: new THREE.Euler( 0.2,  0,    -0.08),
-    lLowerArm: new THREE.Euler( 0.5,  0,     0.06),
-    rLowerArm: new THREE.Euler( 0.5,  0,    -0.06),
+    lUpperArm: new THREE.Euler( 0.2,  0,    -0.95),
+    rUpperArm: new THREE.Euler( 0.2,  0,     0.95),
+    lLowerArm: new THREE.Euler( 0.5,  0,     0),
+    rLowerArm: new THREE.Euler( 0.5,  0,     0),
     lShoulder:  new THREE.Euler( 0.05, 0,     0.02),
     rShoulder:  new THREE.Euler( 0.05, 0,    -0.02),
   },
@@ -153,6 +152,30 @@ function copyPose(p: ArmPose): ArmPose {
 
 function randomGestureInterval() { return 1.8 + Math.random() * 2.5; }
 
+// ─── World constants ──────────────────────────────────────────────────────────
+
+export const WORLD_H = 10.0; // world units visible vertically
+const AVATAR_SCALE    = 9.0;    // tune: bigger = avatar larger on screen
+const BASE_ROT_Y      = Math.PI; // VRM must face +Z toward camera at Z=5
+const HEAD_SCREEN_Y   = 7.5;    // lower = more room for hair above head bone
+
+export function screenXToWorldX(px: number, sw: number, sh: number): number {
+  const worldW = WORLD_H * (sw / sh);
+  return (px / sw - 0.5) * worldW;
+}
+
+// ─── Position / inertia ───────────────────────────────────────────────────────
+
+let avatarTargetX  = 0;
+let avatarCurrentX = 0;
+let avatarVelocityX = 0;
+let groundY = 0; // Y where feet rest; set after VRM load
+let vrmVersion: "0" | "1" = "1"; // VRM0 arm Z convention is inverted after rotateVRM0
+
+export function setAvatarTargetX(worldX: number) {
+  avatarTargetX = worldX;
+}
+
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function randomBlink() { return 2.8 + Math.random() * 4.0; }
@@ -160,6 +183,8 @@ function randomIdleLook() { return 3.0 + Math.random() * 5.0; }
 function lerp(a: number, b: number, t: number) { return a + (b - a) * t; }
 function lerpAngle(a: number, b: number, t: number) { return lerp(a, b, t); }
 function clamp(v: number, min: number, max: number) { return Math.max(min, Math.min(max, v)); }
+// VRM0 after rotateVRM0: 180° Y root rotation inverts arm-bone Z from camera's POV
+function az(z: number) { return vrmVersion === "0" ? -z : z; }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 
@@ -167,15 +192,21 @@ export function initAvatar(canvas: HTMLCanvasElement): () => void {
   const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
   renderer.setPixelRatio(window.devicePixelRatio);
   renderer.setClearColor(0x000000, 0);
-  renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+  renderer.setSize(window.innerWidth, window.innerHeight);
   renderer.outputColorSpace = THREE.SRGBColorSpace;
-  renderer.shadowMap.enabled = true;
 
   const scene = new THREE.Scene();
 
-  const camera = new THREE.PerspectiveCamera(22, canvas.clientWidth / canvas.clientHeight, 0.1, 20);
-  camera.position.set(0, 0.9, 3.8);
-  camera.lookAt(0, 0.85, 0);
+  // Orthographic camera — correct aspect ratio, no distortion
+  function makeOrtho() {
+    const sw = window.innerWidth, sh = window.innerHeight;
+    const worldW = WORLD_H * (sw / sh);
+    const cam = new THREE.OrthographicCamera(-worldW / 2, worldW / 2, WORLD_H, 0, 0.1, 20);
+    cam.position.set(0, 0, 5);
+    cam.lookAt(0, 0, 0);
+    return cam;
+  }
+  let camera = makeOrtho();
 
   // Lighting
   scene.add(new THREE.AmbientLight(0xffeeff, 0.55));
@@ -200,10 +231,23 @@ export function initAvatar(canvas: HTMLCanvasElement): () => void {
     const loaded = gltf.userData.vrm as VRM;
     VRMUtils.removeUnnecessaryVertices(gltf.scene);
     VRMUtils.combineSkeletons(gltf.scene);
-    VRMUtils.rotateVRM0(loaded);
+    vrmVersion = (loaded.meta as any).metaVersion === "0" ? "0" : "1";
+    if (vrmVersion === "0") VRMUtils.rotateVRM0(loaded);
     vrm = loaded;
     scene.add(vrm.scene);
-    console.log("[DIANA] VRM loaded");
+
+    vrm.scene.scale.set(AVATAR_SCALE, AVATAR_SCALE, AVATAR_SCALE);
+    vrm.scene.rotation.y = BASE_ROT_Y;
+    vrm.update(0);
+    const box = new THREE.Box3().setFromObject(vrm.scene);
+    // Anchor on head bone — bounding box unreliable (long hair skews it)
+    const headBone = vrm.humanoid?.getRawBoneNode("head");
+    const headPos  = new THREE.Vector3();
+    if (headBone) headBone.getWorldPosition(headPos);
+    // Shift avatar so head appears at HEAD_SCREEN_Y
+    groundY = HEAD_SCREEN_Y - headPos.y;
+    vrm.scene.position.y = groundY;
+    console.log(`[DIANA] VRM loaded — scale:${AVATAR_SCALE} headY:${headPos.y.toFixed(2)} groundY:${groundY.toFixed(2)} height:${(box.max.y - box.min.y).toFixed(2)}u`);
   },
   (p) => console.log(`[DIANA] Loading: ${((p.loaded / p.total) * 100).toFixed(0)}%`),
   (e) => console.error("[DIANA] Load error:", e));
@@ -215,12 +259,10 @@ export function initAvatar(canvas: HTMLCanvasElement): () => void {
   };
   window.addEventListener("mousemove", onMouseMove);
 
-  // Resize
+  // Resize — rebuild ortho camera
   const onResize = () => {
-    const w = canvas.clientWidth, h = canvas.clientHeight;
-    renderer.setSize(w, h);
-    camera.aspect = w / h;
-    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    camera = makeOrtho();
   };
   window.addEventListener("resize", onResize);
 
@@ -233,16 +275,17 @@ export function initAvatar(canvas: HTMLCanvasElement): () => void {
     const dt = Math.min(clock.getDelta(), 0.05);
 
     if (vrm) {
+      updatePosition(dt);
+      vrm.update(dt);        // runs first: syncs normalized→raw bones, spring physics
+      // manual bone overrides applied AFTER vrm.update so they aren't reset
       updateMouseTracking(dt);
       updateBlink(dt);
       updateBreathing(dt);
       updateIdleLook(dt);
+      updateIdleSway(dt);
       updateArms(dt);
-      updateLegs(dt);
-      if (isJumping) updateJump(dt);
-      if (isWaving) updateWave(dt);
       if (isTalking) { updateLipSync(dt); updateHeadBob(dt); }
-      else { fadeOutLipSync(dt); }
+      else { fadeOutLipSync(dt); updateIdleExpression(dt); }
       applyExpression(dt);
     }
 
@@ -258,6 +301,56 @@ export function initAvatar(canvas: HTMLCanvasElement): () => void {
   };
 }
 
+// ─── Idle sway ───────────────────────────────────────────────────────────────
+
+function updateIdleSway(dt: number) {
+  if (!vrm?.humanoid) return;
+  idleSwayPhase += dt * 0.35;
+
+  const sideS  = Math.sin(idleSwayPhase) * 0.022;
+  const fwdS   = Math.sin(idleSwayPhase * 0.6) * 0.012;
+  const t      = dt * 1.8;
+
+  const spine = vrm.humanoid.getRawBoneNode("spine");
+  if (spine) {
+    spine.rotation.z = lerp(spine.rotation.z, sideS, t);
+    spine.rotation.x = lerp(spine.rotation.x, fwdS, t);
+  }
+  const chest = vrm.humanoid.getRawBoneNode("chest");
+  if (chest) chest.rotation.z = lerp(chest.rotation.z, sideS * 0.6, t);
+
+  const hips = vrm.humanoid.getRawBoneNode("hips");
+  if (hips) hips.rotation.z = lerp(hips.rotation.z, -sideS * 0.4, t);
+}
+
+// ─── Idle expression cycling ─────────────────────────────────────────────────
+
+function updateIdleExpression(dt: number) {
+  idleExprTimer += dt;
+  if (idleExprTimer >= nextIdleExprAt) {
+    idleExprTimer = 0;
+    nextIdleExprAt = 12 + Math.random() * 18;
+    const expr = IDLE_EXPR_POOL[Math.floor(Math.random() * IDLE_EXPR_POOL.length)];
+    setExpression(expr);
+  }
+}
+
+// ─── Position with inertia ───────────────────────────────────────────────────
+
+function updatePosition(dt: number) {
+  if (!vrm?.scene) return;
+
+  // Smooth damp X toward target
+  const diff = avatarTargetX - avatarCurrentX;
+  avatarVelocityX += diff * dt * 6;
+  avatarVelocityX *= Math.pow(0.04, dt); // damping
+  avatarCurrentX += avatarVelocityX * dt;
+
+  vrm.scene.position.x = avatarCurrentX;
+
+  vrm.scene.position.y = lerp(vrm.scene.position.y, groundY, dt * 8);
+}
+
 // ─── Mouse / Head / Eye tracking ─────────────────────────────────────────────
 
 function updateMouseTracking(dt: number) {
@@ -271,10 +364,13 @@ function updateMouseTracking(dt: number) {
   currentHeadEuler.x = lerpAngle(currentHeadEuler.x, targetHeadEuler.x, dt * 4.5);
   currentHeadEuler.y = lerpAngle(currentHeadEuler.y, targetHeadEuler.y, dt * 4.5);
 
+  currentHeadEuler.z = lerpAngle(currentHeadEuler.z, targetHeadTiltZ, dt * 2.5);
+
   const headBone = vrm.humanoid.getRawBoneNode("head");
   if (headBone) {
     headBone.rotation.x = currentHeadEuler.x;
     headBone.rotation.y = currentHeadEuler.y;
+    headBone.rotation.z = currentHeadEuler.z;
   }
 
   const neckBone = vrm.humanoid.getRawBoneNode("neck");
@@ -377,17 +473,16 @@ function updateIdleLook(dt: number) {
   idleLookTimer += dt;
   if (idleLookTimer >= nextIdleLookAt) {
     idleLookTimer = 0;
-    nextIdleLookAt = randomIdleLook();
-    // Pick a random subtle look direction
+    nextIdleLookAt = 1.5 + Math.random() * 3.5; // more frequent
     idleLookTarget.set(
-      (Math.random() - 0.5) * 0.4,
-      (Math.random() - 0.5) * 0.2
+      (Math.random() - 0.5) * 0.9,  // wider horizontal
+      (Math.random() - 0.5) * 0.5   // wider vertical
     );
+    targetHeadTiltZ = (Math.random() - 0.5) * 0.18; // random head tilt
   }
 
-  // Blend idle look into the mouse target
-  targetHeadEuler.y += idleLookTarget.x * 0.15;
-  targetHeadEuler.x += idleLookTarget.y * 0.1;
+  targetHeadEuler.y += idleLookTarget.x * 0.22;
+  targetHeadEuler.x += idleLookTarget.y * 0.15;
 }
 
 // ─── Lip sync ────────────────────────────────────────────────────────────────
@@ -445,11 +540,24 @@ function updateHeadBob(dt: number) {
 // ─── Expression blending ─────────────────────────────────────────────────────
 
 function applyExpression(dt: number) {
-  if (!vrm?.expressionManager || !targetExpression) return;
+  if (!vrm?.expressionManager) return;
 
-  currentExpressionWeight = lerp(currentExpressionWeight, 1.0, dt * 5);
+  // Fade out previous expression gradually (no hard snap to 0)
+  if (prevExpression) {
+    prevExpressionWeight = lerp(prevExpressionWeight, 0, dt * 3);
+    vrm.expressionManager.setValue(prevExpression, prevExpressionWeight);
+    if (prevExpressionWeight < 0.01) {
+      vrm.expressionManager.setValue(prevExpression, 0);
+      prevExpression = null;
+      prevExpressionWeight = 0;
+    }
+  }
+
+  if (!targetExpression) return;
+
+  // Soft blend in — slow lerp, capped at 0.7 for natural look (not "face stuck on max")
+  currentExpressionWeight = lerp(currentExpressionWeight, 0.7, dt * 1.5);
   vrm.expressionManager.setValue(targetExpression, currentExpressionWeight);
-  vrm.update(dt);
 }
 
 // ─── Arms ─────────────────────────────────────────────────────────────────────
@@ -484,9 +592,10 @@ function applyPoseToSkeleton(speed: number, dt: number) {
   for (const [boneName, euler] of bones) {
     const bone = vrm.humanoid.getRawBoneNode(boneName as any);
     if (bone) {
+      const isArm = boneName.includes("Arm") || boneName.includes("Shoulder");
       bone.rotation.x = euler.x;
       bone.rotation.y = euler.y;
-      bone.rotation.z = euler.z;
+      bone.rotation.z = isArm ? az(euler.z) : euler.z;
     }
   }
 }
@@ -512,130 +621,14 @@ function updateArms(dt: number) {
 
     applyPoseToSkeleton(3.5, dt);
   } else {
-    // Return to rest with idle breathing sway
     const basePose = copyPose(POSES.rest);
     const sway = Math.sin(armIdlePhase) * 0.012;
-    const swayY = Math.sin(armIdlePhase * 0.6) * 0.006;
     basePose.lUpperArm.z += sway;
     basePose.rUpperArm.z -= sway;
-    basePose.lUpperArm.x += swayY;
-    basePose.rUpperArm.x += swayY;
-    targetPose = basePose;
 
+    targetPose = basePose;
     applyPoseToSkeleton(2.5, dt);
   }
-}
-
-// ─── Legs ─────────────────────────────────────────────────────────────────────
-
-function setBone(name: string, x: number, y = 0, z = 0) {
-  const bone = vrm!.humanoid?.getRawBoneNode(name as any);
-  if (bone) { bone.rotation.x = x; bone.rotation.y = y; bone.rotation.z = z; }
-}
-
-function lerpBone(name: string, tx: number, ty: number, tz: number, t: number) {
-  const bone = vrm!.humanoid?.getRawBoneNode(name as any);
-  if (!bone) return;
-  bone.rotation.x = lerp(bone.rotation.x, tx, t);
-  bone.rotation.y = lerp(bone.rotation.y, ty, t);
-  bone.rotation.z = lerp(bone.rotation.z, tz, t);
-}
-
-function updateLegs(dt: number) {
-  if (!vrm?.humanoid) return;
-
-  if (isWalking) {
-    walkCycle += dt * 3.8;
-    const L = Math.sin(walkCycle);
-    const R = Math.sin(walkCycle + Math.PI);
-
-    // Upper legs swing
-    setBone("leftUpperLeg",  L * 0.38);
-    setBone("rightUpperLeg", R * 0.38);
-
-    // Lower legs bend on backswing
-    setBone("leftLowerLeg",  Math.max(0, -L) * 0.55);
-    setBone("rightLowerLeg", Math.max(0, -R) * 0.55);
-
-    // Feet angle with step
-    setBone("leftFoot",  -L * 0.18);
-    setBone("rightFoot", -R * 0.18);
-
-    // Hip sway side to side
-    const hipBone = vrm.humanoid.getRawBoneNode("hips");
-    if (hipBone) hipBone.rotation.z = Math.sin(walkCycle * 0.5) * 0.04;
-
-    // Face direction
-    if (vrm.scene) {
-      const targetY = walkDirection === "left" ? Math.PI * 0.15 : -Math.PI * 0.15;
-      vrm.scene.rotation.y = lerp(vrm.scene.rotation.y, targetY, dt * 6);
-    }
-  } else {
-    // Return legs to neutral
-    const t = dt * 4;
-    lerpBone("leftUpperLeg",  0, 0, 0, t);
-    lerpBone("rightUpperLeg", 0, 0, 0, t);
-    lerpBone("leftLowerLeg",  0, 0, 0, t);
-    lerpBone("rightLowerLeg", 0, 0, 0, t);
-    lerpBone("leftFoot",      0, 0, 0, t);
-    lerpBone("rightFoot",     0, 0, 0, t);
-
-    if (vrm.scene) {
-      vrm.scene.rotation.y = lerp(vrm.scene.rotation.y, 0, dt * 4);
-    }
-  }
-}
-
-// ─── Jump ─────────────────────────────────────────────────────────────────────
-
-function updateJump(dt: number) {
-  if (!vrm?.humanoid) return;
-
-  jumpCycle += dt * 2.4;
-  const t = clamp(jumpCycle / Math.PI, 0, 1);
-  const arc = Math.sin(jumpCycle);
-
-  // Anticipation squat → launch → land
-  const bend = arc > 0 ? -arc * 0.3 : arc * 0.2;
-
-  setBone("leftUpperLeg",  bend * 0.8);
-  setBone("rightUpperLeg", bend * 0.8);
-  setBone("leftLowerLeg",  Math.max(0, -bend) * 1.2);
-  setBone("rightLowerLeg", Math.max(0, -bend) * 1.2);
-
-  // Arms rise at peak
-  const armLift = Math.max(0, arc) * 0.5;
-  const lArm = vrm.humanoid.getRawBoneNode("leftUpperArm");
-  const rArm = vrm.humanoid.getRawBoneNode("rightUpperArm");
-  if (lArm) lArm.rotation.z = lerp(lArm.rotation.z, 0.06 + armLift, dt * 10);
-  if (rArm) rArm.rotation.z = lerp(rArm.rotation.z, -0.06 - armLift, dt * 10);
-
-  void t;
-}
-
-// ─── Wave ─────────────────────────────────────────────────────────────────────
-
-function updateWave(dt: number) {
-  if (!vrm?.humanoid) return;
-
-  wavePhase += dt * 6;
-  waveDuration += dt;
-
-  // Right arm waves
-  const wave = Math.sin(wavePhase) * 0.4;
-  const rUpper = vrm.humanoid.getRawBoneNode("rightUpperArm");
-  const rLower = vrm.humanoid.getRawBoneNode("rightLowerArm");
-  if (rUpper) {
-    rUpper.rotation.x = lerp(rUpper.rotation.x, -0.9, dt * 6);
-    rUpper.rotation.z = lerp(rUpper.rotation.z, -0.3 + wave, dt * 6);
-  }
-  if (rLower) {
-    rLower.rotation.x = lerp(rLower.rotation.x, 0.6, dt * 6);
-  }
-
-  // Head tilt toward wave side
-  const headBone = vrm.humanoid.getRawBoneNode("head");
-  if (headBone) headBone.rotation.z = lerp(headBone.rotation.z, -0.12, dt * 4);
 }
 
 // ─── Public API ──────────────────────────────────────────────────────────────
@@ -647,22 +640,6 @@ export function setTalking(state: boolean) {
     visemeTimer = 0;
     currentVisemeWeight = 0;
   }
-}
-
-export function setWalking(dir: "left" | "right" | null) {
-  walkDirection = dir;
-  isWalking = dir !== null;
-  if (!isWalking) walkCycle = 0;
-}
-
-export function setJumping(state: boolean) {
-  isJumping = state;
-  if (state) jumpCycle = 0;
-}
-
-export function setWaving(state: boolean) {
-  isWaving = state;
-  if (state) { wavePhase = 0; waveDuration = 0; }
 }
 
 export function setExpression(
@@ -678,14 +655,11 @@ export function setExpression(
     neutral:   null,
   };
 
-  // Fade out all expressions
-  const all: VRMExpressionPresetName[] = [
-    VRMExpressionPresetName.Happy,
-    VRMExpressionPresetName.Sad,
-    VRMExpressionPresetName.Angry,
-    VRMExpressionPresetName.Surprised,
-  ];
-  all.forEach((e) => vrm!.expressionManager!.setValue(e, 0));
+  // Hand off current expression to prev so it fades out softly
+  if (targetExpression && targetExpression !== map[name]) {
+    prevExpression = targetExpression;
+    prevExpressionWeight = currentExpressionWeight;
+  }
 
   targetExpression = map[name];
   currentExpressionWeight = 0;

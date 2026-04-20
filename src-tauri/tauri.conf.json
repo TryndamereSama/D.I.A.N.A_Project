@@ -13,10 +13,10 @@
       {
         "label": "main",
         "title": "D.I.A.N.A",
-        "width": 1920,
-        "height": 1080,
-        "minWidth": 800,
-        "minHeight": 600,
+        "width": 380,
+        "height": 570,
+        "minWidth": 280,
+        "minHeight": 400,
         "resizable": false,
         "fullscreen": false,
         "decorations": false,
@@ -25,7 +25,8 @@
         "skipTaskbar": true,
         "shadow": false,
         "x": 0,
-        "y": 0
+        "y": 0,
+        "center": false
       }
     ],
     "security": {

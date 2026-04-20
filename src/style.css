@@ -1,8 +1,4 @@
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
+* { margin: 0; padding: 0; box-sizing: border-box; }
 
 html, body {
   width: 100vw;
@@ -11,77 +7,55 @@ html, body {
   background: transparent;
   font-family: 'Segoe UI', system-ui, sans-serif;
   pointer-events: none;
+  border-radius: 16px;
 }
 
-/* ── Avatar container — moves around the screen ── */
-#avatar-container {
+/* ── Avatar canvas — full widget size, CSS crops legs ── */
+#avatar-canvas {
   position: fixed;
-  width: 320px;
-  height: 720px;
+  top: 0; left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: transparent;
+  pointer-events: none;
+  /* bust-up crop — hides waist/legs, shows head + chest */
+  clip-path: inset(0 0 60% 0 round 16px 16px 0 0);
+}
+
+/* ── Chat UI — pinned to widget bottom, full width ── */
+#chat-ui {
+  position: fixed;
+  top: calc(40% + 10px);
+  left: 10px;
+  right: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 10;
   pointer-events: auto;
-  opacity: 0.7;
-  transition: opacity 0.4s ease;
-  will-change: transform;
-}
-
-#avatar-container.active {
-  opacity: 1.0;
-}
-
-#avatar-container:hover {
-  opacity: 1.0;
 }
 
 #drag-handle {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 40px;
+  height: 14px;
   cursor: grab;
-  z-index: 100;
-}
-
-#avatar-canvas {
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: transparent;
-}
-
-/* ── Chat UI ── */
-#ui-overlay {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  width: 100%;
-  padding: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  z-index: 10;
 }
 
 #chat-bubble {
   background: rgba(12, 10, 22, 0.88);
   backdrop-filter: blur(14px);
   border: 1px solid rgba(140, 100, 255, 0.45);
-  border-radius: 14px 14px 4px 14px;
-  padding: 10px 14px;
+  border-radius: 12px 12px 4px 12px;
+  padding: 8px 12px;
   color: #e8e0ff;
-  font-size: 12px;
+  font-size: 11.5px;
   line-height: 1.5;
-  max-height: 130px;
+  max-height: 110px;
   overflow-y: auto;
   word-break: break-word;
   box-shadow: 0 0 18px rgba(140, 100, 255, 0.18);
-  transition: opacity 0.3s ease;
 }
 
 #chat-bubble.hidden { display: none; }
-
 #chat-text { white-space: pre-wrap; }
 
 #input-area {
@@ -96,9 +70,9 @@ html, body {
   backdrop-filter: blur(14px);
   border: 1px solid rgba(140, 100, 255, 0.4);
   border-radius: 20px;
-  padding: 8px 14px;
+  padding: 7px 13px;
   color: #e8e0ff;
-  font-size: 12px;
+  font-size: 11.5px;
   outline: none;
   transition: border-color 0.2s;
 }
@@ -110,13 +84,12 @@ html, body {
 }
 
 #send-btn {
-  width: 36px;
-  height: 36px;
+  width: 33px; height: 33px;
   border-radius: 50%;
   border: none;
   background: rgba(140, 100, 255, 0.75);
   color: white;
-  font-size: 13px;
+  font-size: 12px;
   cursor: pointer;
   transition: background 0.2s, transform 0.1s;
   display: flex;
@@ -125,7 +98,7 @@ html, body {
   flex-shrink: 0;
 }
 
-#send-btn:hover { background: rgba(140, 100, 255, 1); }
+#send-btn:hover  { background: rgba(140, 100, 255, 1); }
 #send-btn:active { transform: scale(0.9); }
 #send-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 

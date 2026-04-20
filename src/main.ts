@@ -1,45 +1,50 @@
 import "./style.css";
 import { initAvatar, setTalking, setExpression } from "./avatar";
 import { sendMessage } from "./claude";
-import { initMovement, updateMovement, setActiveMode } from "./movement";
+import { initMovement, updateMovement } from "./movement";
 
-const canvas    = document.getElementById("avatar-canvas") as HTMLCanvasElement;
-const inputEl   = document.getElementById("user-input") as HTMLInputElement;
-const sendBtn   = document.getElementById("send-btn") as HTMLButtonElement;
+const canvas     = document.getElementById("avatar-canvas") as HTMLCanvasElement;
+const inputEl    = document.getElementById("user-input") as HTMLInputElement;
+const sendBtn    = document.getElementById("send-btn") as HTMLButtonElement;
 const chatBubble = document.getElementById("chat-bubble") as HTMLDivElement;
-const chatText  = document.getElementById("chat-text") as HTMLDivElement;
-const container = document.getElementById("avatar-container") as HTMLDivElement;
+const chatText   = document.getElementById("chat-text") as HTMLDivElement;
 
-// Resize window to full monitor via Tauri API
+// Place compact widget at bottom-right corner
+const WIDGET_W = 380; // logical px
+const WIDGET_H = 570;
+const WIDGET_MARGIN = 12;
+const TASKBAR_H = 48; // approximate Windows taskbar
+
 async function fitToMonitor() {
   try {
-    const { getCurrentWindow, availableMonitors, PhysicalSize, PhysicalPosition } = await import("@tauri-apps/api/window");
-    const monitors = await availableMonitors();
-    const primary = monitors[0];
-    if (primary) {
-      const win = getCurrentWindow();
-      await win.setSize(new PhysicalSize(primary.size.width, primary.size.height));
-      await win.setPosition(new PhysicalPosition(0, 0));
-    }
-  } catch {
-    // Running in browser dev mode — skip
+    const { getCurrentWindow, LogicalSize, LogicalPosition } =
+      await import("@tauri-apps/api/window");
+    const win = getCurrentWindow();
+    const sw = window.screen.width;
+    const sh = window.screen.height;
+    await win.setSize(new LogicalSize(WIDGET_W, WIDGET_H));
+    await win.setPosition(new LogicalPosition(
+      sw - WIDGET_W - WIDGET_MARGIN,
+      sh - WIDGET_H - TASKBAR_H,
+    ));
+  } catch (e) {
+    console.error("[DIANA] fitToMonitor error:", e);
   }
 }
 
 fitToMonitor();
 
-// Init 3D avatar
+// Init 3D avatar (owns the render loop)
 initAvatar(canvas);
 
-// Init screen movement
-initMovement(container);
+// Init + tick movement inside avatar's RAF via a shared clock
+initMovement();
 
-// Movement loop (runs independent of render loop)
-let lastTime = performance.now();
+let lastMovementTime = performance.now();
 function movementLoop() {
   const now = performance.now();
-  const dt = Math.min((now - lastTime) / 1000, 0.05);
-  lastTime = now;
+  const dt  = Math.min((now - lastMovementTime) / 1000, 0.05);
+  lastMovementTime = now;
   updateMovement(dt);
   requestAnimationFrame(movementLoop);
 }
@@ -71,8 +76,6 @@ async function handleSend() {
   setInputBusy(true);
   setTalking(true);
   setExpression("neutral");
-  setActiveMode(true);
-
   let responseText = "";
   showBubble("...");
 
@@ -86,19 +89,13 @@ async function handleSend() {
       setTalking(false);
       setExpression("happy");
       setInputBusy(false);
-
-      setTimeout(() => {
-        hideBubble();
-        setExpression("neutral");
-        setActiveMode(false);
-      }, 8000);
+      setTimeout(() => { hideBubble(); setExpression("neutral"); }, 8000);
     },
     (err) => {
       setTalking(false);
       setInputBusy(false);
       showBubble(`Erro: ${err}`);
       setExpression("sad");
-      setActiveMode(false);
     }
   );
 }
@@ -108,6 +105,3 @@ inputEl.addEventListener("keydown", (e) => {
   if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); }
 });
 
-// Pause movement while user is typing
-inputEl.addEventListener("focus", () => setActiveMode(true));
-inputEl.addEventListener("blur",  () => setActiveMode(false));
