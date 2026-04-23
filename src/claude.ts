@@ -37,7 +37,51 @@ D.I.A.N.A: "Máquina de lavar, água fria, não centrifuga. De nada. Próxima qu
 
 Português do Brasil. Se o operador falar em outro idioma, responda no mesmo idioma — com o mesmo nível de sarcasmo.`;
 
+const MAX_HISTORY = 50; // pairs = 100 messages max
 const history: { role: "user" | "assistant"; content: string }[] = [];
+
+// ── Persistence ───────────────────────────────────────────────────────────────
+
+const HISTORY_FILE = "diana_history.json";
+
+async function getFs() {
+  try {
+    const { BaseDirectory, readTextFile, writeTextFile } = await import("@tauri-apps/plugin-fs");
+    return { BaseDirectory, readTextFile, writeTextFile };
+  } catch {
+    return null; // browser dev mode
+  }
+}
+
+export async function loadHistory(): Promise<void> {
+  const fs = await getFs();
+  if (!fs) return;
+  try {
+    const { BaseDirectory, readTextFile } = fs;
+    const raw = await readTextFile(HISTORY_FILE, { baseDir: BaseDirectory.AppData });
+    const saved = JSON.parse(raw) as { role: "user" | "assistant"; content: string }[];
+    if (Array.isArray(saved)) {
+      history.length = 0;
+      history.push(...saved.slice(-MAX_HISTORY));
+    }
+  } catch {
+    // first run — no file yet, fine
+  }
+}
+
+async function saveHistory(): Promise<void> {
+  const fs = await getFs();
+  if (!fs) return;
+  try {
+    const { BaseDirectory, writeTextFile } = fs;
+    const trimmed = history.slice(-MAX_HISTORY);
+    await writeTextFile(HISTORY_FILE, JSON.stringify(trimmed), { baseDir: BaseDirectory.AppData });
+  } catch (e) {
+    console.warn("[DIANA] saveHistory failed:", e);
+  }
+}
+
+// ── Chat ──────────────────────────────────────────────────────────────────────
 
 export async function sendMessage(
   userMessage: string,
@@ -115,7 +159,10 @@ export async function sendMessage(
       }
     }
 
-    if (!isIntro) history.push({ role: "assistant", content: fullResponse });
+    if (!isIntro) {
+      history.push({ role: "assistant", content: fullResponse });
+      saveHistory(); // fire-and-forget
+    }
     onDone();
   } catch (err) {
     onError(String(err));
@@ -124,6 +171,7 @@ export async function sendMessage(
 
 export function clearHistory() {
   history.length = 0;
+  saveHistory();
 }
 
 export function getHistory() {

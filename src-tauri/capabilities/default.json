@@ -11,6 +11,11 @@
     "core:window:allow-start-dragging",
     "shell:allow-open",
     "global-shortcut:allow-register",
-    "global-shortcut:allow-unregister"
+    "global-shortcut:allow-unregister",
+    "updater:allow-check",
+    "updater:allow-download-and-install",
+    "fs:allow-app-read-recursive",
+    "fs:allow-app-write",
+    "fs:allow-app-meta-recursive"
   ]
 }

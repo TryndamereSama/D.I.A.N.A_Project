@@ -1,6 +1,6 @@
 import "./style.css";
 import { initAvatar, setTalking, setExpression } from "./avatar";
-import { sendMessage, getHistory } from "./claude";
+import { sendMessage, getHistory, loadHistory } from "./claude";
 import { initMovement, updateMovement } from "./movement";
 
 const canvas     = document.getElementById("avatar-canvas") as HTMLCanvasElement;
@@ -41,6 +41,37 @@ async function fitToMonitor() {
 }
 
 fitToMonitor();
+
+// ── Auto-update check ─────────────────────────────────────────────────────────
+
+async function checkForUpdates() {
+  try {
+    const { check } = await import("@tauri-apps/plugin-updater");
+    const update = await check();
+    if (!update) return;
+
+    const { relaunch } = await import("@tauri-apps/plugin-process");
+
+    // Show update notification bubble
+    showBubble(`Atualização disponível: v${update.version}. ${update.body ?? ""}\n\nDigite "atualizar" para instalar.`);
+    chatBubble.classList.remove("hidden");
+
+    // Listen for user typing "atualizar"
+    (window as any).__pendingUpdate = async () => {
+      showBubble("Baixando atualização... pode demorar um pouco.");
+      await update.downloadAndInstall();
+      showBubble("Instalado. Reiniciando...");
+      await new Promise(r => setTimeout(r, 1500));
+      await relaunch();
+    };
+  } catch {
+    // no update or offline — silent fail
+  }
+}
+
+// ── Persistent history load ───────────────────────────────────────────────────
+
+loadHistory(); // fire-and-forget, populates history before first message
 
 // ── Setup / API Key ───────────────────────────────────────────────────────────
 
@@ -113,7 +144,11 @@ async function triggerIntro() {
 
 // First run: show setup if no key stored
 if (!localStorage.getItem("diana_api_key")) showSetup();
-else hideSetup();
+else {
+  hideSetup();
+  // Check for updates silently (only when key is already set = not first run)
+  setTimeout(() => checkForUpdates(), 3000);
+}
 
 // Show tutorial after first key save, or skip if already done
 setupSave.addEventListener("click", () => {
@@ -195,6 +230,13 @@ function setInputBusy(busy: boolean) {
 async function handleSend() {
   const message = inputEl.value.trim();
   if (!message) return;
+
+  // Update shortcut
+  if (message.toLowerCase() === "atualizar" && (window as any).__pendingUpdate) {
+    inputEl.value = "";
+    await (window as any).__pendingUpdate();
+    return;
+  }
 
   inputEl.value = "";
   setInputBusy(true);
