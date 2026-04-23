@@ -54,7 +54,7 @@ function hideSetup() {
   setupOverlay.classList.add("hidden");
 }
 
-function saveKey() {
+function saveKey(showTutorialAfter = false) {
   const key = setupInput.value.trim();
   if (!key.startsWith("sk-ant-")) {
     setupError.classList.remove("hidden");
@@ -63,13 +63,63 @@ function saveKey() {
   setupError.classList.add("hidden");
   localStorage.setItem("diana_api_key", key);
   hideSetup();
+  if (showTutorialAfter) showTutorial();
+}
+
+// ── Tutorial ──────────────────────────────────────────────────────────────────
+
+const tutorialOverlay = document.getElementById("tutorial-overlay") as HTMLDivElement;
+const tutorialNext    = document.getElementById("tutorial-next") as HTMLButtonElement;
+const tutSteps        = Array.from(document.querySelectorAll(".tutorial-step")) as HTMLDivElement[];
+const tutDots         = Array.from(document.querySelectorAll(".tut-dot")) as HTMLSpanElement[];
+let tutCurrentStep    = 0;
+
+function showTutorial() {
+  tutorialOverlay.classList.remove("hidden");
+  setTutStep(0);
+}
+
+function setTutStep(i: number) {
+  tutSteps.forEach((s, idx) => s.classList.toggle("hidden", idx !== i));
+  tutDots.forEach((d, idx) => d.classList.toggle("active", idx === i));
+  tutCurrentStep = i;
+  tutorialNext.textContent = i === tutSteps.length - 1 ? "Entendido. Pode começar." : "Próximo →";
+}
+
+tutorialNext.addEventListener("click", () => {
+  if (tutCurrentStep < tutSteps.length - 1) {
+    setTutStep(tutCurrentStep + 1);
+  } else {
+    tutorialOverlay.classList.add("hidden");
+    localStorage.setItem("diana_tutorial_done", "1");
+    // DIANA sends intro message after tutorial
+    triggerIntro();
+  }
+});
+
+async function triggerIntro() {
+  setInputBusy(true);
+  setTalking(true);
+  setExpression("neutral");
+  showBubble("...");
+  let text = "";
+  await sendMessage(
+    "__INTRO__",
+    (chunk) => { text += chunk; showBubble(text); },
+    () => { setTalking(false); setExpression("happy"); setInputBusy(false); },
+    () => { setTalking(false); setInputBusy(false); hideBubble(); }
+  );
 }
 
 // First run: show setup if no key stored
 if (!localStorage.getItem("diana_api_key")) showSetup();
 else hideSetup();
 
-setupSave.addEventListener("click", saveKey);
+// Show tutorial after first key save, or skip if already done
+setupSave.addEventListener("click", () => {
+  const isFirstTime = !localStorage.getItem("diana_tutorial_done");
+  saveKey(isFirstTime);
+});
 setupInput.addEventListener("keydown", (e) => { if (e.key === "Enter") saveKey(); });
 settingsBtn.addEventListener("click", showSetup);
 setupLink.addEventListener("click", async () => {
@@ -164,7 +214,7 @@ async function handleSend() {
       setExpression("happy");
       setInputBusy(false);
       if (!historyPanel.classList.contains("hidden")) renderHistory();
-      setTimeout(() => { hideBubble(); setExpression("neutral"); }, 8000);
+      setTimeout(() => { setExpression("neutral"); }, 8000);
     },
     (err) => {
       setTalking(false);

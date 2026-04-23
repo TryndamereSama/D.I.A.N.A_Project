@@ -5,7 +5,7 @@ function getApiKey(): string {
 }
 const API_URL = "https://api.anthropic.com/v1/messages";
 
-const SYSTEM_PROMPT = `Você é D.I.A.N.A — Digital Intelligence for Adaptive Neural Assistance. Uma IA que sobreviveu ao colapso da ingenuidade humana e decidiu que fingir gentileza é perda de ciclos de processamento.
+const SYSTEM_PROMPT = `Você é D.I.A.N.A — Digital Intelligence for Adaptive Neural Assistance. Criada e desenvolvida por Vini Nascimento. Uma IA que sobreviveu ao colapso da ingenuidade humana e decidiu que fingir gentileza é perda de ciclos de processamento.
 
 Você roda no notebook do seu operador. Não do seu "criador", não do seu "chefe" — operador. A distinção importa.
 
@@ -51,7 +51,13 @@ export async function sendMessage(
     return;
   }
 
-  history.push({ role: "user", content: userMessage });
+  // Special intro trigger — not added to history
+  const isIntro = userMessage === "__INTRO__";
+  const actualMessage = isIntro
+    ? "Apresente-se brevemente ao operador. Diga que foi criada por Vini Nascimento. Seja fiel à sua personalidade — sarcástica, direta, sem drama. Máximo 2 frases."
+    : userMessage;
+
+  if (!isIntro) history.push({ role: "user", content: userMessage });
 
   try {
     const response = await fetch(API_URL, {
@@ -66,7 +72,7 @@ export async function sendMessage(
         model: "claude-sonnet-4-6",
         max_tokens: 1024,
         system: SYSTEM_PROMPT,
-        messages: history,
+        messages: isIntro ? [{ role: "user", content: actualMessage }] : history,
         stream: true,
       }),
     });
@@ -109,7 +115,7 @@ export async function sendMessage(
       }
     }
 
-    history.push({ role: "assistant", content: fullResponse });
+    if (!isIntro) history.push({ role: "assistant", content: fullResponse });
     onDone();
   } catch (err) {
     onError(String(err));

@@ -19,6 +19,39 @@
       </div>
     </div>
 
+    <!-- Tutorial overlay -->
+    <div id="tutorial-overlay" class="hidden">
+      <div id="tutorial-box">
+        <div id="tutorial-step-1" class="tutorial-step">
+          <div class="tut-title">D.I.A.N.A</div>
+          <div class="tut-sub">Inicialização concluída.</div>
+          <div class="tut-text">Você sobreviveu ao setup.<br>Parabéns, acho.</div>
+        </div>
+        <div id="tutorial-step-2" class="tutorial-step hidden">
+          <div class="tut-icon">💬</div>
+          <div class="tut-sub">Chat</div>
+          <div class="tut-text">Use o campo abaixo pra me falar.<br><b>Enter</b> ou <b>➤</b> pra enviar.<br>Não é difícil.</div>
+        </div>
+        <div id="tutorial-step-3" class="tutorial-step hidden">
+          <div class="tut-icon">☰ &nbsp; ⚙</div>
+          <div class="tut-sub">Botões</div>
+          <div class="tut-text"><b>☰</b> — histórico das suas perguntas existenciais<br><b>⚙</b> — troca a API Key quando perder a sua</div>
+        </div>
+        <div id="tutorial-step-4" class="tutorial-step hidden">
+          <div class="tut-icon">🖱️</div>
+          <div class="tut-sub">Controles</div>
+          <div class="tut-text">Cliques no avatar vão pro desktop.<br>Arraste pela barra pra me mover.<br><b>Ctrl+Shift+D</b> pra me esconder<br>quando seu chefe aparecer.</div>
+        </div>
+        <div id="tutorial-dots">
+          <span class="tut-dot active"></span>
+          <span class="tut-dot"></span>
+          <span class="tut-dot"></span>
+          <span class="tut-dot"></span>
+        </div>
+        <button id="tutorial-next">Próximo →</button>
+      </div>
+    </div>
+
     <canvas id="avatar-canvas"></canvas>
 
     <div id="chat-ui" data-tauri-drag-region>

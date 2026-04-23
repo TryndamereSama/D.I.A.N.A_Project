@@ -100,6 +100,59 @@ html, body {
 #setup-error { font-size: 9.5px; color: #ff6b6b; }
 #setup-error.hidden { display: none; }
 
+/* ── Tutorial overlay ── */
+#tutorial-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(6, 4, 14, 0.97);
+  backdrop-filter: blur(20px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99;
+  pointer-events: auto;
+  border-radius: 16px;
+}
+#tutorial-overlay.hidden { display: none; }
+
+#tutorial-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 28px 20px 20px;
+  width: 100%;
+}
+
+.tutorial-step { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; }
+.tutorial-step.hidden { display: none; }
+
+.tut-title { font-size: 24px; font-weight: 700; color: #c8a8ff; letter-spacing: 4px; text-shadow: 0 0 20px rgba(140,100,255,0.6); }
+.tut-icon  { font-size: 28px; margin-bottom: 4px; }
+.tut-sub   { font-size: 11px; color: rgba(180,150,255,0.6); letter-spacing: 2px; text-transform: uppercase; }
+.tut-text  { font-size: 11.5px; color: #d8d0ff; line-height: 1.7; }
+.tut-text b { color: #c8a8ff; }
+
+#tutorial-dots { display: flex; gap: 6px; margin-top: 4px; }
+.tut-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(140,100,255,0.25); transition: background 0.3s; }
+.tut-dot.active { background: rgba(140,100,255,0.9); }
+
+#tutorial-next {
+  width: 100%;
+  margin-top: 4px;
+  padding: 10px;
+  background: rgba(140,100,255,0.8);
+  border: none;
+  border-radius: 10px;
+  color: white;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: background 0.2s;
+}
+#tutorial-next:hover { background: rgba(140,100,255,1); }
+
 /* ── Avatar canvas — full widget size, CSS crops legs ── */
 #avatar-canvas {
   position: fixed;
